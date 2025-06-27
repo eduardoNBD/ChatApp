@@ -1,4 +1,4 @@
-chat-app-react/.env
-chat-backend/.env
-chat-app-react/node_modules/*
-chat-backend/node_modules/*
+# Configuración y dependencias locales
+**/.env
+**/node_modules/
+**/package-lock.json
