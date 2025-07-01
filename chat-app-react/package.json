@@ -12,7 +12,8 @@
     "electron:build": "npm run build && electron-builder",
     "test.e2e": "cypress run",
     "test.unit": "vitest",
-    "lint": "eslint"
+    "lint": "eslint",
+    "update-tsconfig-aliases": "node scripts/update-tsconfig-aliases.js"
   },
   "dependencies": {
     "@capacitor/app": "7.0.1",
@@ -59,7 +60,7 @@
   },
   "description": "An Ionic project",
   "build": {
-    "appId": "com.example.chatapp",
+    "appId": "com.mindinware.chatapp",
     "files": [
       "dist/**/*",
       "main.js",
