@@ -1,14 +1,12 @@
-import React from 'react';
 import { Switch, Route } from 'react-router-dom';
-import PrivateRoute from './PrivateRoute';
-import NoAuthLayout from './layouts/NoAtuhLayout';
-import ChatLayout from './layouts/ChatLayout';
-import Login from '../pages/Login';
+import PrivateRoute from './PrivateRoute';  
+import Login from '@pages/Login';
+import Home from '@pages/Home';
 
 const RoutesApp = () => (
   <Switch> 
-    <Route path="/login" component={NoAuthLayout} /> 
-    <PrivateRoute path="/" component={ChatLayout} />
+    <Route path="/login" component={Login} /> 
+    <PrivateRoute path="/" component={Home} />
   </Switch>
 );
 

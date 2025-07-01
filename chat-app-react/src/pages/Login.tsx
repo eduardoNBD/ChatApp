@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
+import NoAuthLayout from '@navigation/layouts/NoAtuhLayout';
 
 const Login = ({ onLogin }: { onLogin?: () => void }) => {
   const [username, setUsername] = useState('');
@@ -6,8 +8,7 @@ const Login = ({ onLogin }: { onLogin?: () => void }) => {
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Aquí iría la lógica real de autenticación
+    e.preventDefault(); 
     if (username && password) {
       setError('');
       if (onLogin) onLogin();
@@ -16,22 +17,24 @@ const Login = ({ onLogin }: { onLogin?: () => void }) => {
     }
   };
 
-  return (
-    <div style={{ maxWidth: 400, margin: 'auto', padding: 24 }}>
-      <h2>Iniciar sesión</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Usuario</label>
-          <input type="text" value={username} onChange={e => setUsername(e.target.value)} />
-        </div>
-        <div>
-          <label>Contraseña</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} />
-        </div>
-        {error && <div style={{ color: 'red' }}>{error}</div>}
-        <button type="submit">Entrar</button>
-      </form>
-    </div>
+  return ( 
+    <NoAuthLayout>
+      <div style={{ maxWidth: 400, margin: 'auto', padding: 24 }}>
+        <h2  class="bg-red-500">Iniciar sesión</h2>
+        <form onSubmit={handleSubmit}>
+          <div>
+            <label>Usuario</label>
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)} />
+          </div>
+          <div>
+            <label>Contraseña</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} />
+          </div>
+          {error && <div style={{ color: 'red' }}>{error}</div>}
+          <button type="submit">Entrar</button>
+        </form>
+      </div>
+    </NoAuthLayout>
   );
 };
 

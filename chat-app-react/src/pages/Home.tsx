@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import * as React from 'react';
+import { useEffect, useState } from 'react';
 import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonInput, IonButton, IonList, IonItem, IonFooter } from '@ionic/react';
 import { io } from 'socket.io-client';
+import ChatLayout from '@navigation/layouts/ChatLayout';
 
 const Home: React.FC = () => {
   const [messages, setMessages] = useState<{ sender: string; content: string }[]>([]);
@@ -37,38 +39,40 @@ const Home: React.FC = () => {
     }
   };
 
-  return (
-    <IonPage>
-      <IonHeader>
-        <IonToolbar>
-          <IonTitle>Chat en Vivo</IonTitle>
-        </IonToolbar>
-      </IonHeader>
+  return ( 
+    <ChatLayout>
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Chat en Vivo</IonTitle>
+          </IonToolbar>
+        </IonHeader>
 
-      <IonContent>
-        {/* Lista de mensajes */}
-        <IonList>
-          {messages.map((msg, index) => (
-            <IonItem key={index}>
-              <strong>{msg.sender}:</strong> {msg.content}
-            </IonItem>
-          ))}
-        </IonList>
-      </IonContent>
+        <IonContent>
+          {/* Lista de mensajes */}
+          <IonList>
+            {messages.map((msg, index) => (
+              <IonItem key={index}>
+                <strong>{msg.sender}:</strong> {msg.content}
+              </IonItem>
+            ))}
+          </IonList>
+        </IonContent>
 
-      <IonFooter>
-        <IonToolbar>
-          {/* Campo de entrada para escribir mensajes */}
-          <IonInput
-            value={newMessage}
-            placeholder="Escribe un mensaje"
-            onIonChange={(e) => setNewMessage(e.detail.value || '')}
-          />
-          {/* Botón para enviar mensajes */}
-          <IonButton onClick={sendMessage}>Enviar</IonButton>
-        </IonToolbar>
-      </IonFooter>
-    </IonPage>
+        <IonFooter>
+          <IonToolbar>
+            {/* Campo de entrada para escribir mensajes */}
+            <IonInput
+              value={newMessage}
+              placeholder="Escribe un mensaje"
+              onIonChange={(e) => setNewMessage(e.detail.value || '')}
+            />
+            {/* Botón para enviar mensajes */}
+            <IonButton onClick={sendMessage}>Enviar</IonButton>
+          </IonToolbar>
+        </IonFooter>
+      </IonPage>
+    </ChatLayout>
   );
 };
 

@@ -1,10 +1,13 @@
-import React from 'react';
-import Login from '@pages/Login';
+import { ReactNode } from 'react';
 
-const NoAuthLayout = () => {
+type NoAuthLayoutProps = {
+  children: ReactNode;
+};
+
+const NoAuthLayout = ({ children }: NoAuthLayoutProps) => {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Login />
+      {children}
     </div>
   );
 };

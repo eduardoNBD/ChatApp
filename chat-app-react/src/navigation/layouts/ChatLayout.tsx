@@ -1,17 +1,15 @@
-import React from 'react';
-import { Route, Switch } from 'react-router-dom';
+import { ReactNode } from 'react';
 
-const Layout = () => {
+type ChatLayoutProps = {
+  children: ReactNode;
+};
+
+const ChatLayout = ({ children }: ChatLayoutProps) => {
   return (
-    <div>
-      <main>
-        <Switch>
-          <Route exact path="/" render={() => <div>Home Page</div>} />
-          <Route path="/chat" render={() => <div>Chat Page</div>} />
-        </Switch>
-      </main>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {children}
     </div>
   );
 };
 
-export default Layout;
+export default ChatLayout;
