@@ -40,7 +40,7 @@ const Home: React.FC = () => {
   };
 
   return ( 
-    <ChatLayout>
+    <ChatLayout title="Login" description='Login'>
       <IonPage>
         <IonHeader>
           <IonToolbar>

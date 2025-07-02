@@ -4,12 +4,18 @@ const http = require('http');
 const { Server } = require('socket.io');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
+const cors = require('cors');
 
 dotenv.config();
  
 const app = express();
-const server = http.createServer(app);
+app.use(cors({
+  origin: '*', // O especifica el dominio de tu frontend, por ejemplo: 'http://localhost:3000'
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true // Si necesitas enviar cookies o headers de autenticación
+}));
 
+const server = http.createServer(app);
  
 const io = new Server(server, {
   cors: {
@@ -21,6 +27,9 @@ const io = new Server(server, {
 app.get('/', (req, res) => {
   res.send('Servidor del Chat en Vivo funcionando');
 });
+
+const publicRoutes = require('./routes/public');
+app.use('/api', publicRoutes);
 
 require('./utils/socketHandler')(io);
 

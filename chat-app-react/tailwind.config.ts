@@ -4,8 +4,7 @@ export default {
 		"./index.html",
 		"./src/**/*.{js,ts,jsx,tsx,html}",
 	],
-	mode: 'jit',
-	darkMode: "class",
+	mode: 'jit', 
 	theme: {
 		extend: {},
 		screens: {

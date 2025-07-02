@@ -1,5 +1,5 @@
 import { Switch, Route } from 'react-router-dom';
-import PrivateRoute from './PrivateRoute';  
+import PrivateRoute from '@navigation/PrivateRoute';  
 import Login from '@pages/Login';
 import Home from '@pages/Home';
 
