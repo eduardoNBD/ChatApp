@@ -20,9 +20,13 @@ const Login = ({ onLogin }: { onLogin?: () => void }) => {
   return ( 
     <NoAuthLayout>
       <div style={{ maxWidth: 400, margin: 'auto', padding: 24 }}>
-        <h2  class="bg-red-500">Iniciar sesión</h2>
+        <h2 className="bg-blue-600 underline">Iniciar sesión</h2>  
+        <div className="flex gap-2 bg-gray-100 p-4">
+  <div className="bg-blue-500 text-white p-2">A</div>
+  <div className="bg-red-500 text-white p-2">B</div>
+</div>
         <form onSubmit={handleSubmit}>
-          <div>
+          <div className="flex fg">
             <label>Usuario</label>
             <input type="text" value={username} onChange={e => setUsername(e.target.value)} />
           </div>
