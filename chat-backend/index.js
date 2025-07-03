@@ -9,6 +9,11 @@ const cors = require('cors');
 dotenv.config();
  
 const app = express();
+
+// Middleware para parsear JSON
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 app.use(cors({
   origin: '*', // O especifica el dominio de tu frontend, por ejemplo: 'http://localhost:3000'
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
