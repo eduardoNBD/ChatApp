@@ -75,9 +75,9 @@ router.post('/register', async (req, res) => {
     if ((password && confirm_password) && (password !== confirm_password)) errors.confirm_password += "La contraseña y confirmar contraseña deben ser iguales";
     if (!validator.isEmail(email)) errors.email = "Debe ser un E-mail valido";
 
-    if (Object.keys(errors).length > 0) {
+    if (Object.fromEntries(Object.entries(errors).filter(value => value[1])).length > 0) {
         return res.status(422).json({ 
-            message: errors
+            message: errors, 
         });
     }
 
@@ -97,7 +97,7 @@ router.post('/register', async (req, res) => {
     const user = new User({
       username,
       email: email.toLowerCase(),
-      hash
+      password: hash
     });
 
     await user.save();
@@ -109,7 +109,7 @@ router.post('/register', async (req, res) => {
   } catch (error) {
     console.error('✖ Error en registro:\n', error);
     res.status(500).json({ 
-      message: "Error interno del servidor"
+      message: error
     });
   }
 });
