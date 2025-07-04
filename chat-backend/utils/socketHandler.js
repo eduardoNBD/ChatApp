@@ -2,14 +2,16 @@ const Message = require('../models/Message');
 
 module.exports = (io) => {
     io.on('connection', (socket) => {
+        console.log(`► Un usuario se ha conectado:\n  › ${socket.id}`);
+
         let clientIp = socket.handshake.address;
 
         const allSockets = io.sockets.sockets;
 
-        console.log('Sockets conectados:');
+        console.log('• Sockets conectados:');
         
         for (const [id, sock] of allSockets) {
-            console.log(`ID del socket: ${id}`);
+            console.log(`  › ${id}`);
         }
         
         socket.on('sendMessage', async (data) => {  
@@ -22,7 +24,7 @@ module.exports = (io) => {
         });
   
         socket.on('disconnect', () => {
-            console.log('Un usuario se ha desconectado:', socket.id);
+            console.log(`► Un usuario se ha desconectado:\n  › ${socket.id}`);
         });
     });
 };
