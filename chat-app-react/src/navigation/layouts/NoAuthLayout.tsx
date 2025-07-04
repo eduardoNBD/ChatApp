@@ -14,7 +14,7 @@ const NoAuthLayout = ({ children, title, description }: NoAuthLayoutProps) => {
         {title && <title>{title}</title>} 
         {description && <meta name="description" content={description} />} 
       </Helmet>
-      {children} 
+      {children}  
     </>
   );
 };

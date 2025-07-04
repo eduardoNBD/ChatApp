@@ -26,27 +26,20 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        if (usuario.password !== password) {
-            return res.status(401).json({
-                success: false,
-                mensaje: "Contraseña incorrecta"
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        if (!isMatch) {
+            return res.status(401).json({ 
+                messagge: "Contraseña incorrecta"
             });
-        }
+        }   
+ 
+        user.lastLogin = new Date();
+        await user.save();
 
-        // Actualizar último login
-        usuario.lastLogin = new Date();
-        await usuario.save();
-
-        res.json({
-            success: true,
-            mensaje: "Login exitoso",
-            usuario: {
-                id: usuario._id,
-                username: usuario.username,
-                email: usuario.email,
-                createdAt: usuario.createdAt,
-                lastLogin: usuario.lastLogin
-            }
+        res.json({ 
+            message: "Login exitoso",
+            user:user
         });
 
     } catch (error) {

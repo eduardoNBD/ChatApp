@@ -1,16 +1,19 @@
 import * as React from 'react';
 import { useState } from 'react';
 import NoAuthLayout from '@navigation/layouts/NoAuthLayout'; 
+import { useAlert } from "@components/AlertContext";
+import { useHistory } from "react-router-dom";
 
 const Register = () => {
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
+    const { showAlert } = useAlert();
     const [form, setForm] = useState({
         username: '', 
         email: '', 
         password: '', 
         confirm_password: '', 
     }); 
-    const [errors, setErrors] = useState<{ [key: string]: string }>({});
-    
+ 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setForm({
             ...form,
@@ -28,10 +31,11 @@ const Register = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-  
+      
+
+      const data = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
- 
         if (typeof data.message == "object") { 
           setErrors(data.message);
         } else {
@@ -40,6 +44,13 @@ const Register = () => {
 
         return;
       } 
+
+      showAlert(data.message);
+
+      setTimeout(() => {
+        const history = useHistory();
+        history.push("/login");
+      }, 500);
     } catch (error) {
         setErrors({message:'Error de conexión: '+error});
     }
@@ -86,7 +97,7 @@ const Register = () => {
                     </form>
                 </div>
             </div>
-        </div>
+        </div> 
       </section>
     </NoAuthLayout>
   );

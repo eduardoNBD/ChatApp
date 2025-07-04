@@ -33,7 +33,7 @@ const Login = () => {
         if (typeof data.message == "object") {
           setErrors(data.message); 
         } else {
-          setErrors({message:'Usuario o contraseña incorrectos'});
+          setErrors(data);
         }
         return;
       } 
