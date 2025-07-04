@@ -4,10 +4,13 @@ import NoAuthLayout from '@navigation/layouts/NoAuthLayout';
 import { useAlert } from "@components/AlertContext";
 import { useHistory } from "react-router-dom";
 
-const Register = () => {
+const Register = () => { 
+    const history = useHistory();
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const { showAlert } = useAlert();
     const [form, setForm] = useState({
+        name: '',
+        lastname: '',
         username: '', 
         email: '', 
         password: '', 
@@ -39,7 +42,7 @@ const Register = () => {
         if (typeof data.message == "object") { 
           setErrors(data.message);
         } else {
-          setErrors(data);
+          showAlert(data.message, "error");
         }
 
         return;
@@ -48,7 +51,6 @@ const Register = () => {
       showAlert(data.message);
 
       setTimeout(() => {
-        const history = useHistory();
         history.push("/login");
       }, 500);
     } catch (error) {
@@ -60,12 +62,24 @@ const Register = () => {
     <NoAuthLayout title="Registro" description='Registro'> 
       <section className="bg-gray-50 dark:bg-gray-900">
         <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0"> 
-            <div className="w-full bg-white rounded-lg shadow dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700">
+            <div className="w-full bg-white rounded-lg shadow dark:border md:mt-0 max-w-lg xl:p-0 dark:bg-gray-800 dark:border-gray-700">
                 <div className="p-6 space-y-4 md:space-y-6 sm:p-8">
                     <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white text-center">
                         Registrate
                     </h1>
                     <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit}>
+                      <div className='flex gap-2 mb-3'>
+                          <div>
+                              <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre</label>
+                              <input type="text" value={form.name} onChange={handleChange} name="name" id="name" className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Nombre"/>
+                              {errors.name && <i id="error_name" className='ml-2 text-red-500 text-sm'>{errors.name}</i>}
+                          </div>
+                          <div>
+                              <label htmlFor="lastname" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Apellido</label>
+                              <input type="text" value={form.lastname} onChange={handleChange} name="lastname" id="lastname" className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Apellido"/>
+                              {errors.lastname && <i id="error_lastname" className='ml-2 text-red-500 text-sm'>{errors.lastname}</i>}
+                          </div>
+                      </div>
                         <div className='mb-2'>
                             <label htmlFor="username" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Usuario</label>
                             <input type="text" value={form.username} onChange={handleChange} name="username" id="username" className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Usuario"/>
@@ -78,12 +92,12 @@ const Register = () => {
                         </div>
                         <div className='mb-2'>
                             <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Contraseña</label>
-                            <input type="password"  value={form.password} onChange={handleChange} name="password" id="password" placeholder="••••••••" className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"/>
+                            <input type="password"  value={form.password} onChange={handleChange} name="password" id="password" placeholder="••••••••" autoComplete='off' className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"/>
                             {errors.password && <i id="error_password" className='ml-2 text-red-500 text-sm'>{errors.password}</i>}
                         </div>
                         <div className='mb-2'>
                             <label htmlFor="confirm_password" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Confirmar contraseña</label>
-                            <input type="password"  value={form.confirm_password} onChange={handleChange} name="confirm_password" id="confirm_password" placeholder="••••••••" className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"/>
+                            <input type="password"  value={form.confirm_password} onChange={handleChange} name="confirm_password" id="confirm_password" placeholder="••••••••" autoComplete='off' className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"/>
                             {errors.confirm_password && <i id="error_password" className='ml-2 text-red-500 text-sm'>{errors.confirm_password}</i>}
                         </div>
                         <hr className='my-6'/> 

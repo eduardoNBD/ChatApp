@@ -5,12 +5,12 @@ const { Server } = require('socket.io');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const setupTerminalInput = require('./utils/terminalInput');
 
 dotenv.config();
  
 const app = express();
 
-// Middleware para parsear JSON
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -29,16 +29,19 @@ const io = new Server(server, {
   }
 });
 
-app.get('/', (req, res) => {
-  res.send('Servidor del Chat en Vivo funcionando');
-});
-
-const publicRoutes = require('./routes/public');
-app.use('/api', publicRoutes);
-
 require('./utils/socketHandler')(io);
 
 const PORT = process.env.PORT || 5000;
+
+app.get('/', (req, res) => {
+  res.send(`Servidor Funcionando en puerto: ${PORT}`);
+});
+
+const publicRoutes = require('./routes/public');
+const tokenRoutes = require('./routes/tokens');
+
+app.use('/api', publicRoutes);
+app.use('/api', tokenRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log('✔ MongoDB conectado'))
@@ -47,3 +50,15 @@ mongoose.connect(process.env.MONGO_URI)
 server.listen(PORT, () => {
   console.log(`✔ Servidor iniciado en puerto: ${PORT}`);
 });
+
+process.on('SIGINT', () => {
+  process.stdout.write('\x1b[1A');
+  console.log('\n• Servidor cerrando');
+  process.exit();
+});
+
+process.on('uncaughtException', (err) => {
+  console.log('• Error no capturado:', err);
+});
+
+setupTerminalInput();

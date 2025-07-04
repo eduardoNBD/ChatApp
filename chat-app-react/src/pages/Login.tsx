@@ -1,14 +1,19 @@
 import * as React from 'react';
 import { useState } from 'react';
+import { useAlert } from "@components/AlertContext";
 import NoAuthLayout from '@navigation/layouts/NoAuthLayout'; 
+import { useHistory } from "react-router-dom";
 
 const Login = () => {
+  const history = useHistory(); 
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const { showAlert } = useAlert();
   const [form, setForm] = useState({
     username: '', 
     password: '', 
+    remember: false,
   });
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  
+   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({
       ...form,
@@ -26,17 +31,27 @@ const Login = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-  
-      if (!response.ok) {
-        const data = await response.json();
- 
+
+      const data = await response.json();
+
+      if (!response.ok) { 
         if (typeof data.message == "object") {
           setErrors(data.message); 
         } else {
-          setErrors(data);
+          showAlert(data.message, "error");
         }
         return;
       } 
+      
+      localStorage.setItem('accessToken', data.accessToken);
+      localStorage.setItem('refreshToken', data.refreshToken); 
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      showAlert(data.message);
+
+      setTimeout(() => {
+        history.push("/");
+      }, 500);
     } catch (error) {
       setErrors({message:'Error de conexión: '+error});
     }
@@ -66,7 +81,12 @@ const Login = () => {
                         <div className="flex items-center justify-between">
                             <div className="flex items-start">
                                 <div className="flex items-center h-5">
-                                  <input id="remember" aria-describedby="remember" type="checkbox" className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800"/>
+                                  <input id="remember" onChange={(e)=> 
+                                    setForm({
+                                      ...form,
+                                      ['remember']: e.target.checked
+                                    })} 
+                                    defaultChecked={form.remember} aria-describedby="remember" type="checkbox" className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800"/>
                                 </div>
                                 <div className="ml-3 text-sm">
                                   <label htmlFor="remember" className="text-gray-500 dark:text-gray-300">Recuerdame</label>

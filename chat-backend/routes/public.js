@@ -18,11 +18,16 @@ router.post('/login', async (req, res) => {
             });
         }
  
-        const user = await User.findOne({ email: username.toLowerCase() });
+        const user = await User.findOne({ 
+          $or: [
+            { email: username.toLowerCase() },
+            { username: username }
+          ]
+        });
         
         if (!user) {
             return res.status(401).json({ 
-                mensaje: "Usuario no encontrado"
+                message: "Usuario no encontrado"
             });
         }
 
@@ -34,26 +39,51 @@ router.post('/login', async (req, res) => {
             });
         }   
  
-        user.lastLogin = new Date();
-        await user.save();
+        user.lastLogin = new Date(); 
 
-        res.json({ 
-            message: "Login exitoso",
-            user:user
+        const jwt = require('jsonwebtoken');
+
+        const payload = {
+          id: user._id,
+          username: user.username,
+          email: user.email
+        };
+
+        const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' }); 
+        const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });  
+        
+        user.refreshTokens.push({
+          token: refreshToken,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 días
+          deviceInfo: req.headers['user-agent'] || 'Unknown'
         });
 
+        await user.save();
+        
+        res.json({
+          message: "Login exitoso",
+          accessToken,
+          refreshToken,
+          user: {
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            name: user.name,
+            lastname: user.lastname
+          }
+        });
     } catch (error) {
         console.error('Error en login:', error);
         res.status(500).json({
             success: false,
-            mensaje: "Error interno del servidor"
+            message: "Error interno del servidor"
         });
     }
 });
  
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password, confirm_password } = req.body;
+    const { name, lastname, username, email, password, confirm_password } = req.body;
     let errors = {
         username: '',
         email: '',
@@ -61,19 +91,27 @@ router.post('/register', async (req, res) => {
         confirm_password: '',
     };
 
+    if (!name) errors.name = "El campo nombre es obligatorio";
+    if (!lastname) errors.lastname = "El campo Apellido es obligatorio";
     if (!username) errors.username = "El campo usuario es obligatorio";
     if (!email) errors.email = "El campo E-mail es obligatorio";
     if (!password) errors.password = "El campo contraseña es obligatorio";
     if (!confirm_password) errors.confirm_password = "El campo confirmar constraseña es obligatorio"; 
-    if ((password && confirm_password) && (password !== confirm_password)) errors.confirm_password += "La contraseña y confirmar contraseña deben ser iguales";
+    if (password !== "" && confirm_password !== "" && password !== confirm_password) errors.confirm_password = "La contraseña y confirmar contraseña deben ser iguales";
     if (!validator.isEmail(email)) errors.email = "Debe ser un E-mail valido";
-
-    if (Object.fromEntries(Object.entries(errors).filter(value => value[1])).length > 0) {
+    
+    for (const key in errors) {
+      if (errors[key] === "" || errors[key] == null) {
+        delete errors[key];
+      }
+    }
+    
+    if (Object.entries(errors).length > 0) {
         return res.status(422).json({ 
             message: errors, 
         });
     }
-
+    
     const userExist = await User.findOne({ 
       $or: [{ email: email.toLowerCase() }, { username: username }] 
     });
@@ -88,6 +126,8 @@ router.post('/register', async (req, res) => {
     const hash = await bcrypt.hash(password, saltRounds);
 
     const user = new User({
+      name,
+      lastname,
       username,
       email: email.toLowerCase(),
       password: hash
