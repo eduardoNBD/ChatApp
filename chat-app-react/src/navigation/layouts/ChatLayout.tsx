@@ -14,7 +14,7 @@ const ChatLayout = ({ children, title, description  }: ChatLayoutProps) => {
           {title && <title>{title}</title>} 
           {description && <meta name="description" content={description} />} 
         </Helmet>
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div>
         {children}
       </div>
     </>
