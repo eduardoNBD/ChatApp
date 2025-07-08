@@ -1,4 +1,3 @@
-// Importar dependencias
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -61,4 +60,4 @@ process.on('uncaughtException', (err) => {
   console.log('• Error no capturado:', err);
 });
 
-setupTerminalInput();
+setupTerminalInput(io);

@@ -3,10 +3,32 @@ import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import ChatLayout from '@navigation/layouts/ChatLayout';
 
+interface Chat {
+  _id: string;
+  name: string;
+  participants: string[];
+  lastMessage: string;
+  lastMessageTime: Date;
+  createdAt: Date;
+  isGroup: boolean;
+}
+
+interface Message {
+  _id: string;
+  sender: string;
+  content: string;
+  chatId: string;
+  timestamp: Date;
+}
+
 const Home: React.FC = () => {
-  const [messages, setMessages] = useState<{ sender: string; content: string }[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [user, setUser] = useState<any>(null);
+  const [socket, setSocket] = useState<any>(null);
+  const [error, setError] = useState<string>('');
  
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -14,34 +36,111 @@ const Home: React.FC = () => {
       setUser(JSON.parse(userData));
     }
   }, []);
- 
-  const username = user?.username || 'Usuario' + Math.floor(Math.random() * 100);
-
-  const socket = io('http://localhost:5000');
 
   useEffect(() => {
-    // Escuchar mensajes recibidos
-    socket.on('receiveMessage', (message: { sender: string; content: string }) => {
-      setMessages((prevMessages) => [...prevMessages, message]); // Agregar el mensaje a la lista
-    });
+    const newSocket = io('http://localhost:5000');
+    setSocket(newSocket);
 
-    // Limpiar el socket al desmontar el componente
     return () => {
-      socket.disconnect();
+      newSocket.disconnect();
     };
   }, []);
 
+  useEffect(() => {
+    if (socket && user) {
+      // Obtener chats del usuario
+      socket.emit('getChats', user.username);
+
+      socket.on('chatsList', (chatsList: Chat[]) => {
+        setChats(chatsList);
+        if (chatsList.length > 0 && !selectedChat) {
+          setSelectedChat(chatsList[0]);
+        }
+      });
+
+      socket.on('receiveMessage', (message: Message) => {
+        setMessages((prevMessages) => [...prevMessages, message]);
+      });
+
+      socket.on('chatUpdated', (chatUpdate: any) => {
+        setChats((prevChats) => 
+          prevChats.map(chat => 
+            chat._id === chatUpdate.chatId 
+              ? { ...chat, lastMessage: chatUpdate.lastMessage, lastMessageTime: chatUpdate.lastMessageTime }
+              : chat
+          )
+        );
+      });
+
+      socket.on('error', (errorData: { message: string }) => {
+        setError(errorData.message);
+        setTimeout(() => setError(''), 5000);
+      });
+
+      return () => {
+        socket.off('chatsList');
+        socket.off('receiveMessage');
+        socket.off('chatUpdated');
+        socket.off('error');
+      };
+    }
+  }, [socket, user, selectedChat]);
+
+  useEffect(() => {
+    if (socket && selectedChat) {
+      // Unirse al chat seleccionado
+      socket.emit('joinChat', selectedChat._id);
+      
+      // Obtener mensajes del chat
+      socket.emit('getMessages', selectedChat._id);
+
+      socket.on('messagesList', (messagesList: Message[]) => {
+        setMessages(messagesList);
+      });
+
+      return () => {
+        socket.off('messagesList');
+      };
+    }
+  }, [socket, selectedChat]);
+
+  const username = user?.username || 'Usuario' + Math.floor(Math.random() * 100);
+
   const sendMessage = () => {
-    if (newMessage.trim()) {
-      const message = {
+    if (newMessage.trim() && socket && selectedChat) {
+      const messageData = {
         sender: username,
         content: newMessage,
+        chatId: selectedChat._id
       };
  
-      socket.emit('sendMessage', message);
+      socket.emit('sendMessage', messageData);
+      setNewMessage('');
+    } else if (newMessage.trim() && socket && !selectedChat) {
+      // Crear nuevo chat con un participante específico
+      const messageData = {
+        sender: username,
+        content: newMessage,
+        participants: [username, 'Usuario2'], // Ejemplo: crear chat con otro usuario
+        chatName: `Chat con Usuario2`
+      };
  
+      socket.emit('sendMessage', messageData);
       setNewMessage('');
     }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      sendMessage();
+    }
+  };
+
+  const formatTime = (date: Date) => {
+    return new Date(date).toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
   };
 
   return ( 
@@ -56,130 +155,123 @@ const Home: React.FC = () => {
                 <input type="text" name="" id="" placeholder="Busqueda" className="rounded-2xl bg-gray-100 py-3 px-5 w-full text-gray-600"/>
               </div>
               <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
-                {user?.name[0]}{user?.lastname[0]}
+                {user?.name?.[0]}{user?.lastname?.[0]}
               </div>
             </div> 
 
+            {error && (
+              <div className="px-5 py-2 bg-red-100 border border-red-400 text-red-700 rounded">
+                {error}
+              </div>
+            )}
+
             <div className="flex flex-row justify-between bg-white">
               
-              <div className="flex flex-col w-2/5 border-r-2 overflow-y-auto bg-slate-300"> 
-                <div className="border-b-2 py-4 px-2">
+              <div className="flex flex-col w-2/5 border-r-2 overflow-y-auto bg-gray-800"> 
+                <div className="border-y py-4 px-2">
                   <input type="text" placeholder="search chatting" className="py-2 px-2 border-2 border-gray-200 rounded-2xl w-full"/>
                 </div> 
 
-                <div className="flex flex-row py-4 px-2 justify-center items-center border-b-2">
-                  <div className="w-1/4">
-                    <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
-                      L
+                {chats.map((chat) => (
+                  <div 
+                    key={chat._id}
+                    className={`flex flex-row py-4 px-2 items-center border-b-2 cursor-pointer ${
+                      selectedChat?._id === chat._id ? 'bg-gray-700' : ''
+                    }`}
+                    onClick={() => setSelectedChat(chat)}
+                  >
+                    <div className="w-1/4">
+                      <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
+                        {chat.name.substring(0, 2).toUpperCase()}
+                      </div>
+                    </div>
+                    <div className="w-full">
+                      <div className="text-lg font-semibold text-gray-400">{chat.name}</div>
+                      <span className="text-gray-500">{chat.lastMessage}</span>
                     </div>
                   </div>
-                  <div className="w-full">
-                    <div className="text-lg font-semibold text-gray-400">Luis1994</div>
-                    <span className="text-gray-500">Pick me at 9:00 Am</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-row py-4 px-2 items-center border-b-2">
-                  <div className="w-1/4">
-                    <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
-                      ET
-                    </div>
-                  </div>
-                  <div className="w-full">
-                    <div className="text-lg font-semibold text-gray-400">Everest Trip 2021</div>
-                    <span className="text-gray-500">Hi Sam, Welcome</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-row py-4 px-2 items-center border-b-2">
-                  <div className="w-1/4">
-                    <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
-                      MS
-                    </div>
-                  </div>
-                  <div className="w-full">
-                    <div className="text-lg font-semibold text-gray-400">MERN Stack</div>
-                    <span className="text-gray-500">Lusi : Thanks Everyone</span>
-                  </div>
-                </div>
-                <div className="flex flex-row py-4 px-2 items-center border-b-2">
-                  <div className="w-1/4">
-                    <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
-                      JI
-                    </div>
-                  </div>
-                  <div className="w-full">
-                    <div className="text-lg font-semibold text-gray-400">Javascript Indonesia</div>
-                    <span className="text-gray-500">Evan : some one can fix this</span>
-                  </div>
-                </div>  
+                ))}
               </div>
 
             <div className="w-full px-5 flex flex-col justify-between">
               <div className="flex flex-col mt-5">
-                <div className="flex justify-end mb-4">
-                  <div className="mr-2 py-3 px-4 bg-blue-400 rounded-bl-3xl rounded-tl-3xl rounded-tr-xl text-white">
-                    Welcome to group everyone !
+                {selectedChat ? (
+                  <div className="text-center py-4 text-gray-500">
+                    Chat: {selectedChat.name}
                   </div>
-                  <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
-                    {user?.name[0]}{user?.lastname[0]}
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    Selecciona un chat para comenzar
                   </div>
-                </div>
-                <div className="flex justify-start mb-4">
-                  <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
-                    {user?.name[0]}{user?.lastname[0]}
-                  </div>
-                  <div className="ml-2 py-3 px-4 bg-gray-400 rounded-br-3xl rounded-tr-3xl rounded-tl-xl text-white">
-                    Lorem ipsum dolor sit amet consectetur adipisicing elit. Quaerat
-                    at praesentium, aut ullam delectus odio error sit rem. Architecto
-                    nulla doloribus laborum illo rem enim dolor odio saepe,
-                    consequatur quas?
-                  </div>
-                </div>
-                <div className="flex justify-end mb-4">
-                  <div>
-                    <div className="mr-2 py-3 px-4 bg-blue-400 rounded-bl-3xl rounded-tl-3xl rounded-tr-xl text-white">
-                      Lorem ipsum dolor, sit amet consectetur adipisicing elit.
-                      Magnam, repudiandae.
-                    </div> 
-                    <div className="mt-4 mr-2 py-3 px-4 bg-blue-400 rounded-bl-3xl rounded-tl-3xl rounded-tr-xl text-white">
-                      Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                      Debitis, reiciendis!
+                )}
+                
+                <div className="flex flex-col space-y-4 max-h-96 overflow-y-auto">
+                  {messages.map((message) => (
+                    <div 
+                      key={message._id}
+                      className={`flex ${message.sender === username ? 'justify-end' : 'justify-start'} mb-4`}
+                    >
+                      {message.sender !== username && (
+                        <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center mr-2">
+                          {message.sender.substring(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                      <div className={`py-3 px-4 rounded-3xl text-white ${
+                        message.sender === username 
+                          ? 'bg-blue-400 rounded-bl-3xl rounded-tl-3xl rounded-tr-xl' 
+                          : 'bg-gray-400 rounded-br-3xl rounded-tr-3xl rounded-tl-xl'
+                      }`}>
+                        <div>{message.content}</div>
+                        <div className="text-xs opacity-75 mt-1">
+                          {formatTime(message.timestamp)}
+                        </div>
+                      </div>
+                      {message.sender === username && (
+                        <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center ml-2">
+                          {message.sender.substring(0, 2).toUpperCase()}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
-                    {user?.name[0]}{user?.lastname[0]}
-                  </div>
-                </div>
-                <div className="flex justify-start mb-4">
-                  <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
-                    {user?.name[0]}{user?.lastname[0]}
-                  </div>
-                  <div className="ml-2 py-3 px-4 bg-gray-400 rounded-br-3xl rounded-tr-3xl rounded-tl-xl text-white">
-                    happy holiday guys!
-                  </div>
+                  ))}
                 </div>
               </div>
               <div className="py-5">
                 <input
-                  className="w-full bg-gray-300 py-5 px-3 rounded-xl"
+                  className="w-full bg-gray-100 py-5 px-3 rounded-xl border border-gray-200 text-gray-900"
                   type="text"
-                  placeholder="type your message here..."/>
+                  placeholder="type your message here..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                />
+                <button 
+                  onClick={sendMessage}
+                  className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Enviar
+                </button>
               </div>
             </div> 
-            <div className="w-2/5 border-l-2 px-5">
+            <div className="w-2/5 border-l-2 border-gray-100 px-5">
               <div className="flex flex-col">
-                <div className="font-semibold text-xl py-4 text-gray-500">Mern Stack Group</div>
-                  <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
-                    MS
-                  </div>
-                  <div className="font-semibold py-4 text-gray-500">Created 22 Sep 2021</div>
-                  <div className="font-light text-gray-500">
-                    Lorem ipsum dolor sit amet consectetur adipisicing elit. Deserunt,
-                    perspiciatis!
-                  </div>
-                </div>
+                {selectedChat ? (
+                  <>
+                    <div className="font-semibold text-xl py-4 text-gray-500">{selectedChat.name}</div>
+                    <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
+                      {selectedChat.name.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div className="font-semibold py-4 text-gray-500">
+                      Creado {new Date(selectedChat.createdAt).toLocaleDateString('es-ES')}
+                    </div>
+                    <div className="font-light text-gray-500">
+                      Participantes: {selectedChat.participants.join(', ')}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-gray-500">Selecciona un chat para ver detalles</div>
+                )}
               </div>
+            </div>
             </div>
           </div> 
         </div> 
