@@ -19,12 +19,12 @@ function Commands ({io:io}){
     sockets: (args) => {
       console.log('----------------------------------------------------------\n');
 
-      console.log('• Sockets conectados:'); 
-      const sockets = Array.from(io.sockets.sockets.keys());
+      console.log('• Sockets conectados:');  
       
-      for (const key in sockets) {
-        console.log(`    - ${key}: ${sockets[key]}`);
-      } 
+      for (const [id, socket] of io.sockets.sockets) { 
+        console.log(`    - ${id}: usuario: ${socket.user ? socket.user.username : 'desconocido'} ip: ${socket.ip}`);
+      }
+    
       console.log('\n----------------------------------------------------------');
     },
   }

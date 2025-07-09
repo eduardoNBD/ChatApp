@@ -21,6 +21,10 @@ interface Message {
   timestamp: Date;
 }
 
+interface User {
+  _id: string;
+}
+
 const Home: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
@@ -48,7 +52,7 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     if (socket && user) {
-      // Obtener chats del usuario
+      socket.emit('registerUser', user.username);
       socket.emit('getChats', user.username);
 
       socket.on('chatsList', (chatsList: Chat[]) => {
@@ -57,6 +61,14 @@ const Home: React.FC = () => {
           setSelectedChat(chatsList[0]);
         }
       });
+
+      socket.on('getUsersSearch', (chatsList: Chat[]) => {
+        setChats(chatsList);
+        if (chatsList.length > 0 && !selectedChat) {
+          setSelectedChat(chatsList[0]);
+        }
+      });
+
 
       socket.on('receiveMessage', (message: Message) => {
         setMessages((prevMessages) => [...prevMessages, message]);
@@ -88,10 +100,9 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     if (socket && selectedChat) {
-      // Unirse al chat seleccionado
-      socket.emit('joinChat', selectedChat._id);
       
-      // Obtener mensajes del chat
+      socket.emit('joinChat', selectedChat._id);
+       
       socket.emit('getMessages', selectedChat._id);
 
       socket.on('messagesList', (messagesList: Message[]) => {
@@ -143,16 +154,20 @@ const Home: React.FC = () => {
     });
   };
 
+  const searchUsersHandled = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    socket.emit('searchUsers', {searchText: (e.target as HTMLInputElement).value, socket_id: socket.id});console.log((e.target as HTMLInputElement).value)
+  };
+
   return ( 
-    <ChatLayout title="Chat Home" description='Chat'> 
+    <ChatLayout title="Chat Home" description='Chat'>  
       <section className="bg-gray-50 dark:bg-gray-900">
         <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0"> 
-          <div className="container mx-auto shadow-lg rounded-lg bg-gray-50 dark:bg-gray-900 shadow dark:border border-b-2 dark:border-gray-700">
+          <div className="container mx-auto shadow-lg rounded-lg bg-gray-50 dark:bg-gray-900 shadow dark:border border-b-2 dark:border-gray-700 h-[90%]">
           
             <div className="px-5 py-5 flex justify-between items-center dark:bg-gray-800 rounded-md">
               <div className="font-semibold text-2xl">ChatApp</div>
               <div className="w-1/2">
-                <input type="text" name="" id="" placeholder="Busqueda" className="rounded-2xl bg-gray-100 py-3 px-5 w-full text-gray-600"/>
+                <input onKeyUp={searchUsersHandled} type="text" name="message" id="message" placeholder="Busqueda" className="rounded-2xl bg-gray-100 py-3 px-5 w-full text-gray-600"/>
               </div>
               <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
                 {user?.name?.[0]}{user?.lastname?.[0]}
@@ -165,7 +180,7 @@ const Home: React.FC = () => {
               </div>
             )}
 
-            <div className="flex flex-row justify-between bg-white">
+            <div className="flex flex-row justify-between bg-white h-[90%]">
               
               <div className="flex flex-col w-2/5 border-r-2 overflow-y-auto bg-gray-800"> 
                 <div className="border-y py-4 px-2">
@@ -199,11 +214,7 @@ const Home: React.FC = () => {
                   <div className="text-center py-4 text-gray-500">
                     Chat: {selectedChat.name}
                   </div>
-                ) : (
-                  <div className="text-center py-4 text-gray-500">
-                    Selecciona un chat para comenzar
-                  </div>
-                )}
+                ) : null}
                 
                 <div className="flex flex-col space-y-4 max-h-96 overflow-y-auto">
                   {messages.map((message) => (
@@ -267,9 +278,7 @@ const Home: React.FC = () => {
                       Participantes: {selectedChat.participants.join(', ')}
                     </div>
                   </>
-                ) : (
-                  <div className="text-gray-500">Selecciona un chat para ver detalles</div>
-                )}
+                ) : null}
               </div>
             </div>
             </div>
