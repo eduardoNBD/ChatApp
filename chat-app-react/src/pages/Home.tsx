@@ -349,7 +349,7 @@ const Home: React.FC = () => {
               )}
               
               {/* Primera columna: Lista de chats */}
-              <div className="flex flex-col w-1/3 border-r border-gray-300 bg-gray-50 min-h-0"> 
+              <div className="flex flex-col w-1/4 border-r border-gray-300 bg-gray-50 min-h-0"> 
                 <div className="p-4 border-b border-gray-200 bg-white">
                   <input 
                     type="text" 
