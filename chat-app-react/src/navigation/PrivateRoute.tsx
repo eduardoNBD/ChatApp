@@ -16,7 +16,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ component: Component, ...re
   const validateToken = async () => {
     const accessToken = localStorage.getItem('accessToken');
     const refreshToken = localStorage.getItem('refreshToken');
-     
+    console.log(accessToken,refreshToken);
     if (!accessToken || !refreshToken) {
       setIsValidating(false);
       setIsAuthenticated(false);
@@ -76,8 +76,8 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ component: Component, ...re
         isAuthenticated ? (
           <Component {...props} />
         ) : (
-          <Component {...props} />
-          //<Redirect to="/login" />
+          //<Component {...props} />
+          <Redirect to="/login" />
         )
       }
     />

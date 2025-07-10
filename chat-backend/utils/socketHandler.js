@@ -4,27 +4,32 @@ const Chat = require('../models/Chat');
 const User = require('../models/User');
 
 module.exports = (io) => {
+    const userSocketMap = {};
+
     io.on('connection', (socket) => {
+        
         let ip = socket.handshake.address;
 
         console.log(`\n► Un usuario se ha conectado:\n  › ${socket.id} ${ip}`);
 
         socket.ip = ip; 
 
-        socket.on('registerUser', async (username) => {
-            const user = await User.findOne({ username });
+        socket.on('registerUser', async (id) => {
+            const user = await User.findOne({ _id:id });
             if (user) {
               socket.user = user;  
+              userSocketMap[user._id] = socket.id;
             }
         });
 
         socket.on('searchUsers', async (data) => {
-            const { searchText, socket_id } = data;
+            const { searchText, userId } = data;
             let users = [];
             try { 
-                if(searchText){
+                if (searchText) {
                     users = await User.find({
-                        username: { $regex: searchText, $options: 'i' }
+                        username: { $regex: searchText, $options: 'i' },
+                        _id: { $ne: userId } // Excluir a sí mismo
                     })
                     .limit(5)
                     .select('username name lastname'); 
@@ -40,39 +45,41 @@ module.exports = (io) => {
         socket.on('sendMessage', async (data) => {   
             try {
                 const { sender, content, chatId } = data;
-                
-                // Verificar que el sender sea un ObjectId válido
+                 
                 if (!sender || !mongoose.Types.ObjectId.isValid(sender)) {
                     throw new Error('ID de usuario inválido');
-                }
+                } 
                 
-                // Verificar que el usuario existe
                 const user = await User.findById(sender);
+
                 if (!user) {
                     throw new Error('Usuario no encontrado');
                 }
                  
                 const message = new Message({
                     chatId,
-                    sender: sender, // Ahora es el ObjectId del usuario
+                    sender: sender,  
                     content,
                     ip: socket.ip
                 });
                 
                 await message.save();
                 
-                // Poblar el sender para obtener la información del usuario
                 await message.populate('sender', 'username name lastname _id');
                  
-                await Chat.findByIdAndUpdate(chatId, {
+                const updatedChat = await Chat.findByIdAndUpdate(chatId, {
                     lastMessage: content,
                     lastMessageTime: new Date()
-                });
-                 
-                socket.to(chatId).emit('newMessage', message);
+                }).select('participants'); 
+
+                updatedChat.participants.forEach(participant => {
+                    if(participant._id != sender){
+                        socket.to(userSocketMap[participant._id]).emit('newMessage', message);
+                    }
+                }); 
                 
             } catch (error) {
-                console.error('Error al enviar mensaje:', error);
+                console.error('✖ Error al enviar mensaje:', error);
                 socket.emit('error', { message: 'Error al enviar mensaje' });
             }
         });
@@ -80,8 +87,6 @@ module.exports = (io) => {
         socket.on('createChatAndSendMessage', async (data) => {
             try {
                 const { sender, content, participants, chatName } = data;
-                console.log(data);
-                console.log( sender, content, participants, chatName);
                 
                 // Verificar que el sender sea un ObjectId válido
                 if (!sender || !mongoose.Types.ObjectId.isValid(sender)) {
@@ -129,11 +134,15 @@ module.exports = (io) => {
                 // Emitir el chat creado al usuario
                 socket.emit('chatCreated', populatedChat);
                 
-                // Emitir mensaje a todos los participantes
-                socket.to(chat._id).emit('newMessage', message);
+                participants.forEach(participant => {
+                    if(participant != sender && userSocketMap[participant]){
+                        socket.to(userSocketMap[participant]).emit('chatCreatedOther', populatedChat);
+                        socket.to(userSocketMap[participant]).emit('newMessage', message);
+                    }
+                });  
                 
             } catch (error) {
-                console.error('Error al crear chat y enviar mensaje:', error);
+                console.error('✖ Error al crear chat y enviar mensaje:', error);
                 socket.emit('error', { message: 'Error al crear chat' });
             }
         });
@@ -145,12 +154,12 @@ module.exports = (io) => {
                     .sort({ lastMessageTime: -1 }); 
                 socket.emit('chatsList', chats);
             } catch (error) {
-                console.error('Error al obtener chats:', error);
+                console.error('✖ Error al obtener chats:', error);
                 socket.emit('error', { message: 'Error al obtener chats' });
             }
         });
 
-        socket.on('getMessages', async (data) => {console.log("getMessages");
+        socket.on('getMessages', async (data) => {console.log(`► getMessages del socket: ${ socket.id}`);
             try {
                 const { chatId, page = 1, limit = 20 } = data;
                 
@@ -170,12 +179,18 @@ module.exports = (io) => {
                 });
                 
             } catch (error) {
-                console.error('Error al obtener mensajes:', error);
+                console.error('✖ Error al obtener mensajes:', error);
                 socket.emit('error', { message: 'Error al obtener mensajes' });
             }
         });
  
         socket.on('disconnect', () => {
+            for (const [userId, sId] of Object.entries(userSocketMap)) {
+                if (sId === socket.id) {
+                    delete userSocketMap[userId];
+                    break;
+                }
+            }
             console.log(`\n\n► Un usuario se ha desconectado:\n  › ${socket.id} ${ip}`);
         });
     });

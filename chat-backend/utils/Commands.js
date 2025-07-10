@@ -22,7 +22,7 @@ function Commands ({io:io}){
       console.log('• Sockets conectados:');  
       
       for (const [id, socket] of io.sockets.sockets) { 
-        console.log(`    - ${id}: usuario: ${socket.user ? socket.user.username : 'desconocido'} ip: ${socket.ip}`);
+        console.log(`    - ${id}: usuario: ${socket.user ? socket.user.username : 'desconocido'} ip: ${socket.ip}`); 
       }
     
       console.log('\n----------------------------------------------------------');

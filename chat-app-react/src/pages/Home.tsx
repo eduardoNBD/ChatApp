@@ -71,19 +71,43 @@ const Home: React.FC = () => {
 
       socket.on('chatCreated', (newChat: Chat) => { 
         setSelectedChat(newChat); 
-        setChats(prevChats => [newChat, ...prevChats]);
-        // Limpiar mensajes temporales cuando se crea el chat
+        setChats(prevChats => [newChat, ...prevChats]); 
         setMessages(prev => prev.filter(msg => !msg._id.startsWith('temp-')));
+      });
+
+      socket.on('chatCreatedOther', (newChat: Chat) => { 
+        setChats(prevChats => {
+          const exists = prevChats.some(chat => chat._id === newChat._id);
+          if (!exists) {
+            return [newChat, ...prevChats];
+          }
+          return prevChats;
+        });
       });
 
       socket.on('chatsList', (chatsList: Chat[]) => { 
         setChats(chatsList);
       });
 
-      socket.on('newMessage', (message:Message) => { 
+      socket.on('newMessage', (message:Message) => { console.log("messages"); 
+        setChats(prevChats => {
+          const updated = prevChats.map(chat => {
+            if (chat._id === message.chatId) {
+              return { ...chat, lastMessage: message.content, lastMessageTime: message.timestamp };
+            }
+            return chat;
+          });
+          // Mover el chat actualizado al principio
+          const chatToTop = updated.find(chat => chat._id === message.chatId);
+          const rest = updated.filter(chat => chat._id !== message.chatId);
+          return chatToTop ? [chatToTop, ...rest] : updated;
+        });
         socket.emit('getMessages', { chatId: message.chatId, page: 1, limit: 20 });
       });
-       
+
+      return () => {
+        socket.off('chatCreatedOther');
+      };
     }
   }, [socket, currentUser]);
 
@@ -93,7 +117,7 @@ const Home: React.FC = () => {
       socket.emit('joinChat', selectedChat._id);
        
       socket.on('messagesList', (data: { messages: Message[], page: number, hasMore: boolean, total: number }) => {
-        console.log('Recibidos mensajes:', data.messages.length, 'para página:', data.page);
+         
         if (data.page === 1) {
           setMessages(data.messages);
         } else {
@@ -200,7 +224,7 @@ const Home: React.FC = () => {
   };
 
   const searchUsersHandled = (e: React.ChangeEvent<HTMLInputElement>) => { 
-    socket.emit('searchUsers', {searchText: e.target.value, socket_id: socket.id}); 
+    socket.emit('searchUsers', {searchText: e.target.value, userId: currentUser._id}); 
   };
 
   const handleSelectUser = (user:User) => {
@@ -300,26 +324,31 @@ const Home: React.FC = () => {
     <ChatLayout title="Chat Home" description='Chat'>  
       <section className="bg-gray-50 dark:bg-gray-900">
         <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0"> 
-          <div className="container mx-auto shadow-lg rounded-lg bg-gray-50 dark:bg-gray-900 shadow dark:border border-b-2 dark:border-gray-700 h-[90%] flex flex-col">
+          <div className="container mx-auto shadow-lg rounded-lg bg-gray-50 dark:bg-gray-900 shadow dark:border border-b-2 dark:border-gray-700 h-[90%] flex flex-col overflow-hidden">
           
             {/* Header con barra de búsqueda */}
             <div className="px-5 py-4 bg-gray-800 border-b border-gray-700">
               <div className="flex justify-between items-center">
                 <div className="font-semibold text-2xl text-white">ChatApp</div>
                 <div className="w-1/2 relative">
-                  <input 
-                    onChange={(e) => {
-                      setUsersSearchText(e.target.value);
-                      searchUsersHandled(e); 
-                    }}
-                    type="text" 
-                    name="message" 
-                    id="message" 
-                    value={usersSearchText} 
-                    autoComplete='off' 
-                    placeholder="Buscar usuarios..." 
-                    className="rounded-2xl bg-gray-100 py-3 px-5 w-full text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className='rounded-2xl bg-gray-100 py-3 px-5 w-full text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex'>
+                    <input 
+                      onChange={(e) => {
+                        setUsersSearchText(e.target.value);
+                        searchUsersHandled(e); 
+                      }}
+                      type="text" 
+                      name="message" 
+                      id="message" 
+                      value={usersSearchText} 
+                      autoComplete='off' 
+                      placeholder="Buscar usuarios..." 
+                      className="focus:outline-none w-[97%]"
+                    />
+                    <button className='text-gray-500 cursor-pointer' onClick={(e) => {setUsersSearchText('');setUsersSearch([]); }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M18 6l-12 12"></path><path d="M6 6l12 12"></path></svg>
+                    </button>
+                  </div>
                   {usersSearch.length > 0 && (
                     <ul className="absolute left-0 right-0 bg-white border rounded shadow z-10 mt-1 max-h-48 overflow-y-auto">
                       {usersSearch.map(user => (
@@ -404,7 +433,7 @@ const Home: React.FC = () => {
                         <div className="text-xs text-gray-500">En línea</div>
                       </div>
                       <button className='text-gray-500 cursor-pointer' onClick={handledCloseChat}>
-                        <svg  xmlns="http://www.w3.org/2000/svg"  width="16"  height="16"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></svg>
+                        <svg  xmlns="http://www.w3.org/2000/svg"  width="16"  height="16"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  strokeWidth="2"  strokeLinecap="round"  strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></svg>
                       </button>
                     </div> 
                     
