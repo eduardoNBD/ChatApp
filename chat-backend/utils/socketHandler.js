@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Message = require('../models/Message');
 const Chat = require('../models/Chat');
 const User = require('../models/User');
@@ -8,11 +9,7 @@ module.exports = (io) => {
 
         console.log(`\n► Un usuario se ha conectado:\n  › ${socket.id} ${ip}`);
 
-        socket.ip = ip;
-        
-        socket.on('joinChat', (chatId) => {
-            socket.join(chatId);  
-        });
+        socket.ip = ip; 
 
         socket.on('registerUser', async (username) => {
             const user = await User.findOne({ username });
@@ -21,85 +18,131 @@ module.exports = (io) => {
             }
         });
 
-        socket.on('searchUsers', (data) => {
-            const {searchText, socket_id } = data; 
+        socket.on('searchUsers', async (data) => {
+            const { searchText, socket_id } = data;
+            let users = [];
+            try { 
+                if(searchText){
+                    users = await User.find({
+                        username: { $regex: searchText, $options: 'i' }
+                    })
+                    .limit(5)
+                    .select('username name lastname'); 
+                }
 
-            console.log(`Socket: ${socket_id} y busca a ${searchText}`)
+                socket.emit('searchUsersResult', users);
+            } catch (error) {
+                console.error('✖ Error en búsqueda de usuarios:', error);
+                socket.emit('error', { message: 'Error en búsqueda de usuarios' });
+            }
         });
 
-        socket.on('sendMessage', async (data) => {  
+        socket.on('sendMessage', async (data) => {   
             try {
-                const { sender, content, chatId, chatName, participants } = data;
+                const { sender, content, chatId } = data;
                 
-                let chat = null;
+                // Verificar que el sender sea un ObjectId válido
+                if (!sender || !mongoose.Types.ObjectId.isValid(sender)) {
+                    throw new Error('ID de usuario inválido');
+                }
                 
-                if (chatId) {
-                    chat = await Chat.findById(chatId);
-                    if (!chat) {
-                        socket.emit('error', { message: 'Chat no encontrado' });
-                        return;
-                    }
-                } else {
-                    if (participants && participants.length > 0) {
-                        chat = await Chat.findOne({
-                            participants: { $all: participants },
-                            isGroup: false
-                        });
-                        
-                        if (!chat) {
-                            chat = new Chat({
-                                name: chatName || `Chat entre ${participants.join(', ')}`,
-                                participants: participants,
-                                isGroup: participants.length > 2
-                            });
-                            await chat.save();
-                        }
-                    } else {
-                        socket.emit('error', { message: 'Se requieren participantes para crear un chat' });
-                        return;
-                    }
+                // Verificar que el usuario existe
+                const user = await User.findById(sender);
+                if (!user) {
+                    throw new Error('Usuario no encontrado');
                 }
-
-                if (!chat.participants.includes(sender)) {
-                    socket.emit('error', { message: 'No eres participante de este chat' });
-                    return;
-                }
-
-                const newMessage = new Message({ 
-                    chatId: chat._id, 
-                    sender, 
-                    content, 
-                    ip 
+                 
+                const message = new Message({
+                    chatId,
+                    sender: sender, // Ahora es el ObjectId del usuario
+                    content,
+                    ip: socket.ip
                 });
-                await newMessage.save();
-
-             
-                chat.lastMessage = content;
-                chat.lastMessageTime = new Date();
-                await chat.save();
- 
-                io.to(chat._id.toString()).emit('receiveMessage', { 
-                    sender, 
-                    content, 
-                    chatId: chat._id,
-                    timestamp: newMessage.timestamp
-                });
- 
-                io.to(chat._id.toString()).emit('chatUpdated', {
-                    chatId: chat._id,
+                
+                await message.save();
+                
+                // Poblar el sender para obtener la información del usuario
+                await message.populate('sender', 'username name lastname _id');
+                 
+                await Chat.findByIdAndUpdate(chatId, {
                     lastMessage: content,
-                    lastMessageTime: chat.lastMessageTime
+                    lastMessageTime: new Date()
                 });
-
+                 
+                socket.to(chatId).emit('newMessage', message);
+                
             } catch (error) {
                 console.error('Error al enviar mensaje:', error);
                 socket.emit('error', { message: 'Error al enviar mensaje' });
             }
         });
 
-        socket.on('getChats', async (userId) => {
+        socket.on('createChatAndSendMessage', async (data) => {
             try {
-                const chats = await Chat.find({ participants: userId }).sort({ lastMessageTime: -1 });
+                const { sender, content, participants, chatName } = data;
+                console.log(data);
+                console.log( sender, content, participants, chatName);
+                
+                // Verificar que el sender sea un ObjectId válido
+                if (!sender || !mongoose.Types.ObjectId.isValid(sender)) {
+                    throw new Error('ID de usuario inválido');
+                }
+                
+                // Verificar que el usuario existe
+                const user = await User.findById(sender);
+                if (!user) {
+                    throw new Error('Usuario no encontrado');
+                }
+                
+                // Crear el chat
+                const chat = new Chat({
+                    name: chatName,
+                    participants: participants,
+                    isGroup: participants.length > 2
+                });
+                
+                await chat.save();
+                
+                // Crear el mensaje
+                const message = new Message({
+                    chatId: chat._id,
+                    sender: sender, // Ahora es el ObjectId del usuario
+                    content,
+                    ip: socket.ip
+                });
+                
+                await message.save();
+                
+                // Poblar el sender para obtener la información del usuario
+                await message.populate('sender', 'username name lastname _id');
+                
+                // Actualizar último mensaje del chat
+                await Chat.findByIdAndUpdate(chat._id, {
+                    lastMessage: content,
+                    lastMessageTime: new Date()
+                });
+                
+                // Obtener el chat con participantes poblados
+                const populatedChat = await Chat.findById(chat._id)
+                    .populate('participants', 'username name lastname _id');
+                
+                // Emitir el chat creado al usuario
+                socket.emit('chatCreated', populatedChat);
+                
+                // Emitir mensaje a todos los participantes
+                socket.to(chat._id).emit('newMessage', message);
+                
+            } catch (error) {
+                console.error('Error al crear chat y enviar mensaje:', error);
+                socket.emit('error', { message: 'Error al crear chat' });
+            }
+        });
+
+        socket.on('getChats', async (userId) => { 
+            try {
+                const chats = await Chat.find({ participants: userId })
+                    .populate('participants', 'username name lastname _id') 
+                    .sort({ lastMessageTime: -1 }); 
                 socket.emit('chatsList', chats);
             } catch (error) {
                 console.error('Error al obtener chats:', error);
@@ -107,17 +150,31 @@ module.exports = (io) => {
             }
         });
 
-        socket.on('getMessages', async (chatId) => {
+        socket.on('getMessages', async (data) => {console.log("getMessages");
             try {
-                const messages = await Message.find({ chatId }).sort({ timestamp: 1 });
-
-                socket.emit('messagesList', messages);
+                const { chatId, page = 1, limit = 20 } = data;
+                
+                const skip = (page - 1) * limit;
+                
+                const messages = await Message.find({ chatId })
+                    .populate('sender', 'username name lastname _id') // Poblar la información del sender
+                    .sort({ timestamp: 1 }) // Ascendente (más antiguos primero)
+                    .skip(skip)
+                    .limit(limit);
+                
+                socket.emit('messagesList', {
+                    messages,
+                    page,
+                    hasMore: messages.length === limit,
+                    total: await Message.countDocuments({ chatId })
+                });
+                
             } catch (error) {
                 console.error('Error al obtener mensajes:', error);
                 socket.emit('error', { message: 'Error al obtener mensajes' });
             }
         });
-  
+ 
         socket.on('disconnect', () => {
             console.log(`\n\n► Un usuario se ha desconectado:\n  › ${socket.id} ${ip}`);
         });
