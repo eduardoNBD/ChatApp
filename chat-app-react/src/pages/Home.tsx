@@ -323,14 +323,26 @@ const Home: React.FC = () => {
   return ( 
     <ChatLayout title="Chat Home" description='Chat'>  
       <section className="bg-gray-50 dark:bg-gray-900">
-        <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0"> 
+        <div className="flex flex-col items-center justify-center px-6 py-0 md:py-8 mx-auto h-screen"> 
           <div className="container mx-auto shadow-lg rounded-lg bg-gray-50 dark:bg-gray-900 shadow dark:border border-b-2 dark:border-gray-700 h-[90%] flex flex-col overflow-hidden">
           
             {/* Header con barra de búsqueda */}
             <div className="px-5 py-4 bg-gray-800 border-b border-gray-700">
-              <div className="flex justify-between items-center">
-                <div className="font-semibold text-2xl text-white">ChatApp</div>
-                <div className="w-1/2 relative">
+              <div className="grid grid-cols-3 justify-between items-center">
+                <div className="font-semibold text-2xl text-white col-span-3 md:col-span-1">
+                  <div className="flex gap-4 justify-between items-center">
+                    <div>
+                      ChatApp
+                    </div> 
+                    <div className='flex md:hidden justify-center'>
+                      <div className=" h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
+                        {currentUser?.name?.[0]}{currentUser?.lastname?.[0]}
+                      </div>
+                    </div>
+                  </div>
+                  <hr className='my-2 block md:hidden'/>
+                </div>
+                <div className="relative col-span-3 md:col-span-1 mt-2 md:mt-0">
                   <div className='rounded-2xl bg-gray-100 py-3 px-5 w-full text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex'>
                     <input 
                       onChange={(e) => {
@@ -362,8 +374,10 @@ const Home: React.FC = () => {
                     </ul>
                   )}
                 </div>
-                <div className="h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
-                  {currentUser?.name?.[0]}{currentUser?.lastname?.[0]}
+                <div className='hidden md:flex justify-end'>
+                  <div className=" h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
+                    {currentUser?.name?.[0]}{currentUser?.lastname?.[0]}
+                  </div>
                 </div>
               </div>
             </div> 
@@ -403,10 +417,13 @@ const Home: React.FC = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-gray-900 truncate">
-                          {chat.isGroup 
-                            ? chat.name 
-                            : getOtherParticipantName(chat.participants, currentUser._id)
-                          }
+                          <div className="flex justify-between">
+                            {chat.isGroup 
+                              ? chat.name 
+                              : getOtherParticipantName(chat.participants, currentUser._id)
+                            }
+                            <i className='text-[10px] text-gray-500'>{formatTime(chat.lastMessageTime)}</i>
+                          </div>
                         </div>
                         <div className="text-xs text-gray-500 truncate">{chat.lastMessage}</div>
                       </div>
