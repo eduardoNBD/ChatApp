@@ -7,31 +7,31 @@ dotenv.config();
 
 const users = [
   {
-    name: 'Juan',
-    lastname: 'Pérez',
-    username: 'juanp',
-    email: 'juanp@example.com',
+    name: 'One',
+    lastname: 'User',
+    username: 'userOne',
+    email: 'one@example.com',
     password: 'password123',
   },
   {
-    name: 'Ana',
-    lastname: 'García',
-    username: 'anag',
-    email: 'anag@example.com',
+    name: 'Two',
+    lastname: 'User',
+    username: 'usertwo',
+    email: 'two@example.com',
     password: 'password123',
   },
   {
-    name: 'Luis',
-    lastname: 'Martínez',
-    username: 'luism',
-    email: 'luism@example.com',
+    name: 'Three',
+    lastname: 'User',
+    username: 'userthree',
+    email: 'three@example.com',
     password: 'password123',
   },
   {
-    name: 'María',
-    lastname: 'López',
-    username: 'marial',
-    email: 'marial@example.com',
+    name: 'Four',
+    lastname: 'User',
+    username: 'userfour',
+    email: 'four@example.com',
     password: 'password123',
   }
 ];
