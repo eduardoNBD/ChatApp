@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { useAlert } from "@contexts/AlertContext";
+import { useSession } from "@contexts/SessionContext";
 import NoAuthLayout from '@navigation/layouts/NoAuthLayout'; 
 import { useHistory } from "react-router-dom";
 
@@ -8,6 +9,7 @@ const Login = () => {
   const history = useHistory(); 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const { showAlert } = useAlert();
+  const { login } = useSession();
   const [form, setForm] = useState({
     username: '', 
     password: '', 
@@ -43,9 +45,7 @@ const Login = () => {
         return;
       } 
       
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken); 
-      localStorage.setItem('user', JSON.stringify(data.user));
+      login(data.accessToken, data.refreshToken, data.user);
 
       showAlert(data.message);
 
