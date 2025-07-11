@@ -57,11 +57,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem('accessToken', JSON.stringify(accessToken));
+    localStorage.setItem('accessToken', accessToken ?? '');
   }, [accessToken]);
 
   useEffect(() => {
-    localStorage.setItem('refreshToken', JSON.stringify(refreshToken));
+    localStorage.setItem('refreshToken', refreshToken ?? '');
   }, [refreshToken]);
 
   const logout = () => {

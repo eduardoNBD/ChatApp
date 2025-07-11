@@ -1,2 +1,72 @@
 @import "tailwindcss";
+
+*{
+
+    scrollbar-width: inherit !important;
+}
+ 
+
+::-webkit-scrollbar-track {
+  background: linear-gradient(to bottom, 
+    #1f2937 0%, /* Color del header (gray-800) */
+    #1f2937 20%, 
+    #f9fafb 20%, /* Color del contenido (gray-50) */
+    #f9fafb 100%
+  );
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom,
+    #6b7280 0%, /* Color intermedio */
+    #9ca3af 50%,
+    #6b7280 100%
+  );
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom,
+    #4b5563 0%,
+    #6b7280 50%,
+    #4b5563 100%
+  );
+}
+
+/* Para modo oscuro */
+.dark ::-webkit-scrollbar-track {
+  background: linear-gradient(to bottom, 
+    #1f2937 0%, /* Color del header en modo oscuro */
+    #1f2937 20%, 
+    #111827 20%, /* Color del contenido en modo oscuro (gray-900) */
+    #111827 100%
+  );
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom,
+    #4b5563 0%,
+    #6b7280 50%,
+    #4b5563 100%
+  );
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom,
+    #374151 0%,
+    #4b5563 50%,
+    #374151 100%
+  );
+}
+
+/* Para Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #6b7280 #f9fafb;
+}
+
+.dark * {
+  scrollbar-color: #4b5563 #111827;
+}
  

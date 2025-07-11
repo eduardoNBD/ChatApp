@@ -51,14 +51,14 @@ const Home: React.FC = () => {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
   const [showChatsList, setShowChatsList] = useState(false);
-  const [showChatDetail, setShowChatDetail] = useState(false);
+  const [showChatDetail, setShowChatDetail] = useState(false); 
 
-  useEffect(() => {
+  useEffect(() => {  
     const newSocket = io('http://localhost:5000');
     setSocket(newSocket);
 
     return () => {
-      newSocket.disconnect();
+      newSocket.disconnect(); 
     };
   }, []);
 
@@ -91,7 +91,7 @@ const Home: React.FC = () => {
         setChats(chatsList);
       });
 
-      socket.on('newMessage', (message:Message) => { console.log("messages"); 
+      socket.on('newMessage', (message:Message) => { console.log("messages"); playSound('bell.mp3');
         setChats(prevChats => {
           const updated = prevChats.map(chat => {
             if (chat._id === message.chatId) {
@@ -123,7 +123,7 @@ const Home: React.FC = () => {
         if (data.page === 1) {
           setMessages(data.messages);
         } else {
-          setMessages(prev => [...prev, ...data.messages]);
+          setMessages(prev => [ ...data.messages, ...prev]);
         }
         setHasMoreMessages(data.hasMore);
         setIsLoadingMessages(false);
@@ -209,20 +209,47 @@ const Home: React.FC = () => {
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       sendMessage();
     }
   };
 
   const formatTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString('es-ES', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    const d = new Date(date);
+    const now = new Date();
+  
+    // Compara solo año, mes y día
+    const isToday =
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate();
+  
+    if (isToday) {
+      // Si es hoy, muestra solo la hora
+      return d.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } else {
+      // Si es de otro día, muestra la fecha
+      return d.toLocaleDateString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+    }
   };
 
   const getOtherParticipantName = (participants: User[], currentUserId: string): string => {
     const otherParticipant = participants.find(user => user._id !== currentUserId);
     return otherParticipant ? `${otherParticipant.name} ${otherParticipant.lastname}` : 'Usuario desconocido';
+  };
+
+  const getOtherParticipantInitials= (participants: User[], currentUserId: string): string => {
+    const otherParticipant = participants.find(user => user._id !== currentUserId);
+    return otherParticipant ? `${otherParticipant.name[0]}${otherParticipant.lastname[0]}` : 'Usuario desconocido';
   };
 
   const searchUsersHandled = (e: React.ChangeEvent<HTMLInputElement>) => { 
@@ -318,6 +345,17 @@ const Home: React.FC = () => {
     }
   };
 
+  const playSound = (fileName: string) => { 
+    const audio = new Audio(`/assets/audio/${fileName}`);
+    try{
+      audio.play();
+    } catch(e)
+    {
+
+    }
+    
+  };
+
   const handledCloseChat = ()  => {
     setMessages([])
     setSelectedChat(null)
@@ -325,7 +363,7 @@ const Home: React.FC = () => {
     setMessagesPage(1);
     setShowChatDetail(false);
   }
-
+  
   return ( 
     <ChatLayout title="Chat Home" description='Chat'>  
       <section className="bg-gray-50 dark:bg-gray-900">
@@ -449,7 +487,10 @@ const Home: React.FC = () => {
                     >
                       <div className="flex-shrink-0 mr-3">
                         <div className="h-10 w-10 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center text-sm">
-                          {chat.name.substring(0, 2).toUpperCase()}
+                          {chat.isGroup 
+                            ? chat.name 
+                            : getOtherParticipantInitials(chat.participants, currentUser._id)
+                          }
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
@@ -527,7 +568,7 @@ const Home: React.FC = () => {
                             className={`flex ${message.sender._id === currentUser._id ? 'justify-end' : 'justify-start'} mb-4`}>
                             {message.sender._id !== currentUser._id && (
                               <div className="h-8 w-8 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center mr-2 text-xs">
-                                {message.sender.name[0]} {message.sender.lastname[0]}
+                                {message.sender.name[0]}{message.sender.lastname[0]}
                               </div>
                             )}
                             <div className={`py-2 px-3 rounded-lg max-w-xs lg:max-w-md ${
@@ -544,7 +585,7 @@ const Home: React.FC = () => {
                             </div>
                             {message.sender._id === currentUser._id && (
                               <div className="h-8 w-8 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center ml-2 text-xs">
-                                {message.sender.name[0]} {message.sender.lastname[0]}
+                                {message.sender.name[0]}{message.sender.lastname[0]}
                               </div>
                             )}
                           </div>
@@ -553,15 +594,15 @@ const Home: React.FC = () => {
                       
                       {/* Input de mensaje */}
                       <div className="p-4 bg-white border-t border-gray-200">
-                        <div className="flex items-center gap-2">
-                          <input
-                            className="flex-1 py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-500"
-                            type="text"
-                            placeholder="Escribe un mensaje..."
+                        <div className="flex items-center gap-2"> 
+                          <textarea
+                            placeholder='Escribe tu mensaje'
                             value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
+                            className="flex-1 py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-500"
                             onKeyPress={handleKeyPress}
-                          />
+                            onChange={(e) => setNewMessage(e.target.value)}
+                          > 
+                          </textarea>
                           <button 
                             onClick={sendMessage} 
                             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
@@ -640,10 +681,10 @@ const Home: React.FC = () => {
                           {selectedChat.participants.map((participant) => (
                             <div key={participant._id} className="flex items-center gap-2">
                               <div className="h-6 w-6 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center text-[10px]">
-                                {participant.name[0]} {participant.lastname[0]}
+                                {participant.name[0]}{participant.lastname[0]}
                               </div>
                               <div className="text-sm text-gray-700">
-                                {participant.username}
+                                {participant.name} {participant.lastname}
                                 {participant._id === currentUser._id && <span className="text-blue-500 ml-1">(Tú)</span>}
                               </div>
                             </div>

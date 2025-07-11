@@ -166,13 +166,13 @@ module.exports = (io) => {
                 const skip = (page - 1) * limit;
                 
                 const messages = await Message.find({ chatId })
-                    .populate('sender', 'username name lastname _id') // Poblar la información del sender
-                    .sort({ timestamp: 1 }) // Ascendente (más antiguos primero)
+                    .populate('sender', 'username name lastname _id') 
+                    .sort({ timestamp: -1 }) 
                     .skip(skip)
                     .limit(limit);
                 
                 socket.emit('messagesList', {
-                    messages,
+                    messages: messages.reverse(),
                     page,
                     hasMore: messages.length === limit,
                     total: await Message.countDocuments({ chatId })
