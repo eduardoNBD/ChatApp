@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import NoAuthLayout from '@navigation/layouts/NoAuthLayout'; 
-import { useAlert } from "@components/AlertContext";
+import { useAlert } from "@contexts/AlertContext";
 import { useHistory } from "react-router-dom";
 
 const Register = () => { 

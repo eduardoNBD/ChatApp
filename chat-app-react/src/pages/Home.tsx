@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import ChatLayout from '@navigation/layouts/ChatLayout';
+import { useSession } from '@contexts/SessionContext';
 
 interface Chat {
   _id: string;
@@ -29,12 +30,18 @@ interface User {
 }
 
 const Home: React.FC = () => {
+  const { logout, user: currentUser, isAuthenticated } = useSession();
+  
+  // Redirigir si no está autenticado
+  if (!isAuthenticated || !currentUser) {
+    return null; // O redirigir a login
+  }
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [newMessage, setNewMessage] = useState('');
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [socket, setSocket] = useState<any>(null);
   const [error, setError] = useState<string>('');
   const [usersSearch,setUsersSearch] = useState<User[]>([]);
@@ -43,13 +50,8 @@ const Home: React.FC = () => {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
- 
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setCurrentUser(JSON.parse(userData));
-    }
-  }, []);
+  const [showChatsList, setShowChatsList] = useState(false);
+  const [showChatDetail, setShowChatDetail] = useState(false);
 
   useEffect(() => {
     const newSocket = io('http://localhost:5000');
@@ -285,6 +287,9 @@ const Home: React.FC = () => {
     } else {
       console.log('Socket no está conectado');
     }
+    
+    // En móvil, cerrar la lista de chats y mostrar el chat
+    setShowChatsList(false);
   }
 
   const loadMoreMessages = () => {
@@ -318,6 +323,7 @@ const Home: React.FC = () => {
     setSelectedChat(null)
     setSelectedUser(null)
     setMessagesPage(1);
+    setShowChatDetail(false);
   }
 
   return ( 
@@ -337,7 +343,7 @@ const Home: React.FC = () => {
                     <div className='flex md:hidden justify-center'>
                       <div className=" h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
                         {currentUser?.name?.[0]}{currentUser?.lastname?.[0]}
-                      </div>
+                      </div> 
                     </div>
                   </div>
                   <hr className='my-2 block md:hidden'/>
@@ -378,12 +384,15 @@ const Home: React.FC = () => {
                   <div className=" h-12 w-12 p-2 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center">
                     {currentUser?.name?.[0]}{currentUser?.lastname?.[0]}
                   </div>
+                  <button className='ml-2 cursor-pointer' onClick={ () => logout()}>
+                    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  strokeWidth="2"  strokeLinecap="round"  strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" /><path d="M9 12h12l-3 -3" /><path d="M18 15l3 -3" /></svg>
+                  </button>
                 </div>
               </div>
             </div> 
 
                         {/* Contenedor principal con 3 columnas */}
-            <div className="flex flex-row flex-1 bg-white min-h-0">
+            <div className="flex flex-row flex-1 bg-white min-h-0 relative">
               
               {error && (
                 <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 px-4 py-2 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -391,9 +400,34 @@ const Home: React.FC = () => {
                 </div>
               )}
               
+              {/* Overlay para cerrar paneles en móvil */}
+              {(showChatsList || showChatDetail) && (
+                <div 
+                  className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden transition-opacity duration-300"
+                  onClick={() => {
+                    setShowChatsList(false);
+                    setShowChatDetail(false);
+                  }}
+                />
+              )}
+              
               {/* Primera columna: Lista de chats */}
-              <div className="flex flex-col w-1/4 border-r border-gray-300 bg-gray-50 min-h-0"> 
+              <div className={`flex flex-col border-r border-gray-300 bg-gray-50 min-h-0 transition-all duration-300 transform ${
+                showChatsList ? 'absolute left-0 top-0 w-80 h-full z-30 translate-x-0 md:relative md:w-1/4 md:translate-x-0' : 'absolute left-0 top-0 w-80 h-full z-30 -translate-x-full md:relative md:w-1/4 md:translate-x-0 md:flex'
+              }`}> 
                 <div className="p-4 border-b border-gray-200 bg-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-gray-900">Chats</h3>
+                    <button 
+                      onClick={() => setShowChatsList(false)}
+                      className="md:hidden text-gray-500 hover:text-gray-700"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 6l-12 12"></path>
+                        <path d="M6 6l12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
                   <input 
                     type="text" 
                     placeholder="Buscar chats..." 
@@ -431,12 +465,23 @@ const Home: React.FC = () => {
                   ))}
                 </div>
               </div> 
+              
               {/* Segunda columna: Área de chat */}
               <div className="flex flex-col flex-1 min-h-0">
                 {selectedChat ? (
                   <>
                     {/* Header del chat */}
                     <div className="px-4 py-3 bg-white border-b border-gray-200 flex items-center gap-3">
+                      <button 
+                        onClick={() => setShowChatsList(true)}
+                        className="md:hidden text-gray-500 hover:text-gray-700 mr-2"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="3" y1="6" x2="21" y2="6"></line>
+                          <line x1="3" y1="12" x2="21" y2="12"></line>
+                          <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                      </button>
                       <div className="h-10 w-10 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center text-sm">
                         {selectedUser?.name?.[0]} {selectedUser?.lastname?.[0]} 
                       </div>
@@ -449,6 +494,17 @@ const Home: React.FC = () => {
                         </div>
                         <div className="text-xs text-gray-500">En línea</div>
                       </div>
+                      <button 
+                        onClick={() => setShowChatDetail(true)}
+                        className="md:hidden text-gray-500 hover:text-gray-700"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-menu-deep">
+                          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                          <path d="M4 6h16" />
+                          <path d="M7 12h13" />
+                          <path d="M10 18h10" />
+                        </svg>
+                      </button>
                       <button className='text-gray-500 cursor-pointer' onClick={handledCloseChat}>
                         <svg  xmlns="http://www.w3.org/2000/svg"  width="16"  height="16"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  strokeWidth="2"  strokeLinecap="round"  strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></svg>
                       </button>
@@ -519,14 +575,35 @@ const Home: React.FC = () => {
                       <div className="text-6xl mb-4">💬</div>
                       <div className="text-xl font-semibold mb-2">Selecciona un chat</div>
                       <div className="text-sm">Elige una conversación para comenzar a chatear</div>
+                      <button 
+                        onClick={() => setShowChatsList(true)}
+                        className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors md:hidden"
+                      >
+                        Ver chats
+                      </button>
                     </div>
                   </div>
                 )}
               </div> 
-                            {/* Tercera columna: Panel de información */}
-              <div className={`${selectedChat ? 'w-1/4' : 'w-0'} border-l border-gray-200 bg-white transition-all duration-300 overflow-hidden`}>
+              
+              {/* Tercera columna: Panel de información */}
+              <div className={`border-l border-gray-200 bg-white transition-all duration-300 overflow-hidden transform ${
+                showChatDetail ? 'absolute right-0 top-0 w-80 h-full z-30 translate-x-0 md:relative md:w-1/4 md:translate-x-0' : 'absolute right-0 top-0 w-80 h-full z-30 translate-x-full md:relative md:w-1/4 md:translate-x-0 md:block'
+              } ${selectedChat ? 'block' : 'hidden'}`}>
                 {selectedChat && (
                   <div className="p-4 h-full">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-gray-900">Detalles del chat</h3>
+                      <button 
+                        onClick={() => setShowChatDetail(false)}
+                        className="md:hidden text-gray-500 hover:text-gray-700"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 6l-12 12"></path>
+                          <path d="M6 6l12 12"></path>
+                        </svg>
+                      </button>
+                    </div>
                     <div className="text-center mb-6">
                       <div className="h-16 w-16 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center mx-auto mb-3 text-lg">
                         {selectedUser?.name?.[0]} {selectedUser?.lastname?.[0]} 

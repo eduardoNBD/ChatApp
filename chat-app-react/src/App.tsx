@@ -1,7 +1,8 @@
 import { IonApp, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import RoutesApp from '@navigation/routes';
-import { AlertProvider } from "@components/AlertContext";
+import { AlertProvider } from "./contexts/AlertContext";
+import { SessionProvider } from "./contexts/SessionContext";
 
 import './index.css';
 
@@ -11,13 +12,15 @@ import '@theme/variables.css';
 setupIonicReact();
 
 const App: React.FC = () => (
-  <AlertProvider>
-    <IonApp>
-      <IonReactRouter>
-        <RoutesApp />
-      </IonReactRouter>
-    </IonApp>
-  </AlertProvider>
+  <SessionProvider>
+    <AlertProvider>
+      <IonApp>
+        <IonReactRouter>
+          <RoutesApp />
+        </IonReactRouter>
+      </IonApp>
+    </AlertProvider>
+  </SessionProvider>
 );
 
 export default App;
