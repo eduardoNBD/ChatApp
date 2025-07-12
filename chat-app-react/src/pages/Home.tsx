@@ -93,7 +93,8 @@ const Home: React.FC = () => {
         setChats(chatsList);
       });
 
-      socket.on('newMessage', (message:Message) => { console.log("messages"); playSound('bell.mp3');
+      socket.on('newMessage', (message:Message) => {  
+        playSound('bell.mp3');
         setChats(prevChats => {
           const updated = prevChats.map(chat => {
             if (chat._id === message.chatId) {
@@ -161,9 +162,15 @@ const Home: React.FC = () => {
 
   // Efecto para obtener el estado de los participantes
   useEffect(() => {
-    if (socket && selectedChat && selectedChat._id !== 'temp') {
+    if (socket && selectedChat) {
       // Solicitar estado de participantes
-      socket.emit('getParticipantsStatus', { chatId: selectedChat._id });
+      if (selectedChat._id === 'temp' && selectedUser) {
+        // Para chats temporales, enviar el userId del usuario seleccionado
+        socket.emit('getParticipantsStatus', { chatId: selectedChat._id, userId: selectedUser._id });
+      } else {
+        // Para chats existentes, solo enviar el chatId
+        socket.emit('getParticipantsStatus', { chatId: selectedChat._id });
+      }
 
       // Escuchar actualizaciones de estado de participantes
       socket.on('participantsStatus', (data: { chatId: string, participants: User[] }) => {
@@ -187,11 +194,8 @@ const Home: React.FC = () => {
         socket.off('participantsStatus');
         socket.off('userStatusChanged');
       };
-    } else if (selectedChat && selectedChat._id === 'temp') {
-      // Para chats temporales, usar los participantes del chat seleccionado
-      setParticipantsWithStatus(selectedChat.participants);
     }
-  }, [socket, selectedChat]);
+  }, [socket, selectedChat, selectedUser]);
  
   useEffect(() => {
     if (shouldScrollToBottom && messages.length > 0) {
@@ -293,6 +297,7 @@ const Home: React.FC = () => {
   };
 
   const handleSelectUser = (user:User) => {
+    setSelectedUser(user);
     // Buscar si ya existe un chat con este usuario
     const existingChat = chats.find(chat => {
       // Verificar si es un chat individual (no grupo) y contiene al usuario seleccionado
@@ -391,6 +396,27 @@ const Home: React.FC = () => {
 
     }
     
+  };
+
+  const getParticipantStatus = (userId: string) => {
+    if (socket && socket.connected) {
+      socket.emit('getParticipantStatus', { userId });
+      
+      // Escuchar la respuesta
+      socket.once('participantStatus', (data: { userId: string, participant: User }) => {
+        if (data.userId === userId) {
+          // Actualizar el estado de participantes con la nueva información
+          setParticipantsWithStatus(prev => {
+            const existing = prev.find(p => p._id === userId);
+            if (existing) {
+              return prev.map(p => p._id === userId ? data.participant : p);
+            } else {
+              return [...prev, data.participant];
+            }
+          });
+        }
+      });
+    }
   };
 
   const handledCloseChat = ()  => {
@@ -580,12 +606,11 @@ const Home: React.FC = () => {
                           }
                         </div>
                         <div className="text-xs text-gray-500">
-                          {selectedUser && participantsWithStatus.length > 0 ? 
+                          { 
                             (() => {
-                              const participant = participantsWithStatus.find(p => p._id === selectedUser._id);
-                              return participant?.status ? '● En línea' : '● Desconectado';
-                            })() : 
-                            '● En línea'
+                              const participant = participantsWithStatus.find(p => p._id === selectedUser?._id);
+                              return participant?.status ? <span className="text-green-500">● En línea</span> : <span className="text-red-500">● Desconectado </span>;
+                            })()  
                           }
                         </div>
                       </div>

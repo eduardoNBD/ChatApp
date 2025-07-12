@@ -200,22 +200,35 @@ module.exports = (io) => {
 
         socket.on('getParticipantsStatus', async (data) => {
             try {
-                const { chatId } = data;
-                
-                // Obtener el chat con participantes poblados
-                const chat = await Chat.findById(chatId)
-                    .populate('participants', 'username name lastname _id');
-                
-                if (!chat) {
-                    throw new Error('Chat no encontrado');
-                }
-                
-                // Mapear los participantes con su estado de conexión
-                const participantsWithStatus = chat.participants.map(participant => ({
-                    ...participant.toObject(),
-                    status: !!userSocketMap[participant._id] // true si está conectado, false si no
-                }));
-                
+                const { chatId, userId } = data;
+                let participantsWithStatus = [];
+
+                if(chatId !== 'temp'){
+                    // Obtener el chat con participantes poblados
+                    const chat = await Chat.findById(chatId)
+                        .populate('participants', 'username name lastname _id');
+                    
+                    if (!chat) {
+                        throw new Error('Chat no encontrado');
+                    }
+                    
+                    // Mapear los participantes con su estado de conexión
+                    participantsWithStatus = chat.participants.map(participant => ({
+                        ...participant.toObject(),
+                        status: !!userSocketMap[participant._id] // true si está conectado, false si no
+                    }));
+                } else { 
+                    // Para chats temporales, obtener el usuario específico
+                    const user = await User.findById(userId).select('username name lastname _id');
+                    if (user) {
+                        participantsWithStatus = [{
+                            ...user.toObject(),
+                            status: !!userSocketMap[userId] // true si está conectado, false si no
+                        }];
+                        console.log(userSocketMap[userId]);
+                    }
+                } 
+
                 socket.emit('participantsStatus', {
                     chatId,
                     participants: participantsWithStatus
@@ -224,6 +237,32 @@ module.exports = (io) => {
             } catch (error) {
                 console.error('✖ Error al obtener estado de participantes:', error);
                 socket.emit('error', { message: 'Error al obtener estado de participantes' });
+            }
+        });
+
+        socket.on('getParticipantStatus', async (data) => {
+            try {
+                const { userId } = data;
+                
+                // Obtener el usuario específico
+                const user = await User.findById(userId).select('username name lastname _id');
+                if (!user) {
+                    throw new Error('Usuario no encontrado');
+                }
+                
+                const participantWithStatus = {
+                    ...user.toObject(),
+                    status: !!userSocketMap[userId] // true si está conectado, false si no
+                };
+
+                socket.emit('participantStatus', {
+                    userId,
+                    participant: participantWithStatus
+                });
+                
+            } catch (error) {
+                console.error('✖ Error al obtener estado del participante:', error);
+                socket.emit('error', { message: 'Error al obtener estado del participante' });
             }
         });
  
