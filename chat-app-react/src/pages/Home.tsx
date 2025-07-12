@@ -27,6 +27,7 @@ interface User {
   name: string;
   lastname: string;
   username: string;
+  status?: boolean;
 }
 
 const Home: React.FC = () => {
@@ -52,6 +53,7 @@ const Home: React.FC = () => {
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
   const [showChatsList, setShowChatsList] = useState(false);
   const [showChatDetail, setShowChatDetail] = useState(false); 
+  const [participantsWithStatus, setParticipantsWithStatus] = useState<User[]>([]);
 
   useEffect(() => {  
     const newSocket = io('http://localhost:5000');
@@ -156,6 +158,40 @@ const Home: React.FC = () => {
       socket.emit('getMessages', { chatId: selectedChat._id, page: 1, limit: 20 });
     }
   }, [selectedChat, socket, messages.length]);
+
+  // Efecto para obtener el estado de los participantes
+  useEffect(() => {
+    if (socket && selectedChat && selectedChat._id !== 'temp') {
+      // Solicitar estado de participantes
+      socket.emit('getParticipantsStatus', { chatId: selectedChat._id });
+
+      // Escuchar actualizaciones de estado de participantes
+      socket.on('participantsStatus', (data: { chatId: string, participants: User[] }) => {
+        if (data.chatId === selectedChat._id) {
+          setParticipantsWithStatus(data.participants);
+        }
+      });
+
+      // Escuchar cuando un usuario se conecta/desconecta
+      socket.on('userStatusChanged', (data: { userId: string, status: boolean }) => {
+        setParticipantsWithStatus(prev => 
+          prev.map(participant => 
+            participant._id === data.userId 
+              ? { ...participant, status: data.status }
+              : participant
+          )
+        );
+      });
+
+      return () => {
+        socket.off('participantsStatus');
+        socket.off('userStatusChanged');
+      };
+    } else if (selectedChat && selectedChat._id === 'temp') {
+      // Para chats temporales, usar los participantes del chat seleccionado
+      setParticipantsWithStatus(selectedChat.participants);
+    }
+  }, [socket, selectedChat]);
  
   useEffect(() => {
     if (shouldScrollToBottom && messages.length > 0) {
@@ -302,6 +338,7 @@ const Home: React.FC = () => {
     setHasMoreMessages(true);
     setIsLoadingMessages(false);
     setShouldScrollToBottom(true);
+    setParticipantsWithStatus([]); // Limpiar estado de participantes
     
     // Obtener el usuario seleccionado para mostrar su avatar
     const otherParticipant = chat.participants.find(p => p._id !== currentUser._id);
@@ -362,6 +399,7 @@ const Home: React.FC = () => {
     setSelectedUser(null)
     setMessagesPage(1);
     setShowChatDetail(false);
+    setParticipantsWithStatus([]);
   }
   
   return ( 
@@ -503,7 +541,12 @@ const Home: React.FC = () => {
                             <i className='text-[10px] text-gray-500'>{formatTime(chat.lastMessageTime)}</i>
                           </div>
                         </div>
-                        <div className="text-xs text-gray-500 truncate">{chat.lastMessage}</div>
+                        <div className="text-xs text-gray-500 truncate flex justify-between">
+                          <div>
+                            {chat.lastMessage}
+                          </div>
+                          <div></div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -536,7 +579,15 @@ const Home: React.FC = () => {
                             : getOtherParticipantName(selectedChat.participants, currentUser._id)
                           }
                         </div>
-                        <div className="text-xs text-gray-500">En línea</div>
+                        <div className="text-xs text-gray-500">
+                          {selectedUser && participantsWithStatus.length > 0 ? 
+                            (() => {
+                              const participant = participantsWithStatus.find(p => p._id === selectedUser._id);
+                              return participant?.status ? '● En línea' : '● Desconectado';
+                            })() : 
+                            '● En línea'
+                          }
+                        </div>
                       </div>
                       <button 
                         onClick={() => setShowChatDetail(true)}
@@ -647,14 +698,7 @@ const Home: React.FC = () => {
                           <path d="M6 6l12 12"></path>
                         </svg>
                       </button>
-                    </div>
-                    <div className="text-center mb-6">
-                      <div className="h-16 w-16 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center mx-auto mb-3 text-lg">
-                        {selectedUser?.name?.[0]} {selectedUser?.lastname?.[0]} 
-                      </div>
-                      <div className="font-semibold text-lg text-gray-900 mb-1">{selectedUser?.name?.[0]} {selectedUser?.lastname?.[0]} </div>
-                      <div className="text-sm text-green-600">● En línea</div>
-                    </div>
+                    </div> 
                     
                     <div className="space-y-4">
                       <div className="border-t border-gray-200 pt-4">
@@ -676,16 +720,22 @@ const Home: React.FC = () => {
                       </div>
                       
                       <div className="border-t border-gray-200 pt-4">
-                        <div className="text-sm font-medium text-gray-700 mb-2">Participantes ({selectedChat.participants.length})</div>
+                        <div className="text-sm font-medium text-gray-700 mb-2">Participantes ({participantsWithStatus.length || selectedChat.participants.length})</div>
                         <div className="space-y-2">
-                          {selectedChat.participants.map((participant) => (
+                          {(participantsWithStatus.length > 0 ? participantsWithStatus : selectedChat.participants).map((participant) => (
                             <div key={participant._id} className="flex items-center gap-2">
-                              <div className="h-6 w-6 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center text-[10px]">
+                              <div className="size-8 bg-yellow-500 rounded-full text-white font-semibold flex items-center justify-center text-[10px]">
                                 {participant.name[0]}{participant.lastname[0]}
                               </div>
                               <div className="text-sm text-gray-700">
-                                {participant.name} {participant.lastname}
-                                {participant._id === currentUser._id && <span className="text-blue-500 ml-1">(Tú)</span>}
+                                <div className='flex items-center gap-2'>
+                                  <div>{participant.name} {participant.lastname}</div>
+                                  {
+                                    participant._id === currentUser._id ? 
+                                    <span className="text-blue-500 ml-1">(Tú)</span> :
+                                    participant.status ? <div className="text-xs text-green-600 float-end">● En línea</div> : <div className="text-xs text-red-600">● Desconectado</div> 
+                                  }
+                                </div>
                               </div>
                             </div>
                           ))}

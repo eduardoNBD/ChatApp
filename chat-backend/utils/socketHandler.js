@@ -19,6 +19,19 @@ module.exports = (io) => {
             if (user) {
               socket.user = user;  
               userSocketMap[user._id] = socket.id;
+              
+              // Notificar a todos los participantes de los chats del usuario que se conectó
+              const userChats = await Chat.find({ participants: user._id });
+              userChats.forEach(chat => {
+                chat.participants.forEach(participantId => {
+                  if (participantId.toString() !== user._id.toString() && userSocketMap[participantId]) {
+                    socket.to(userSocketMap[participantId]).emit('userStatusChanged', {
+                      userId: user._id,
+                      status: true
+                    });
+                  }
+                });
+              });
             }
         });
 
@@ -152,6 +165,7 @@ module.exports = (io) => {
                 const chats = await Chat.find({ participants: userId })
                     .populate('participants', 'username name lastname _id') 
                     .sort({ lastMessageTime: -1 }); 
+                 
                 socket.emit('chatsList', chats);
             } catch (error) {
                 console.error('✖ Error al obtener chats:', error);
@@ -159,7 +173,7 @@ module.exports = (io) => {
             }
         });
 
-        socket.on('getMessages', async (data) => {console.log(`► getMessages del socket: ${ socket.id}`);
+        socket.on('getMessages', async (data) => { 
             try {
                 const { chatId, page = 1, limit = 20 } = data;
                 
@@ -183,14 +197,63 @@ module.exports = (io) => {
                 socket.emit('error', { message: 'Error al obtener mensajes' });
             }
         });
+
+        socket.on('getParticipantsStatus', async (data) => {
+            try {
+                const { chatId } = data;
+                
+                // Obtener el chat con participantes poblados
+                const chat = await Chat.findById(chatId)
+                    .populate('participants', 'username name lastname _id');
+                
+                if (!chat) {
+                    throw new Error('Chat no encontrado');
+                }
+                
+                // Mapear los participantes con su estado de conexión
+                const participantsWithStatus = chat.participants.map(participant => ({
+                    ...participant.toObject(),
+                    status: !!userSocketMap[participant._id] // true si está conectado, false si no
+                }));
+                
+                socket.emit('participantsStatus', {
+                    chatId,
+                    participants: participantsWithStatus
+                });
+                
+            } catch (error) {
+                console.error('✖ Error al obtener estado de participantes:', error);
+                socket.emit('error', { message: 'Error al obtener estado de participantes' });
+            }
+        });
  
         socket.on('disconnect', () => {
+            let disconnectedUserId = null;
+            
             for (const [userId, sId] of Object.entries(userSocketMap)) {
                 if (sId === socket.id) {
+                    disconnectedUserId = userId;
                     delete userSocketMap[userId];
                     break;
                 }
             }
+            
+            // Notificar a todos los participantes de los chats del usuario que se desconectó
+            if (disconnectedUserId) {
+                Chat.find({ participants: disconnectedUserId }).then(userChats => {
+                    userChats.forEach(chat => {
+                        chat.participants.forEach(participantId => {
+                            if (participantId.toString() !== disconnectedUserId && userSocketMap[participantId]) {
+                                socket.to(userSocketMap[participantId]).emit('userStatusChanged', {
+                                    userId: disconnectedUserId,
+                                    status: false
+                                });
+                            }
+                        });
+                    });
+                });
+            }
+            
             console.log(`\n\n► Un usuario se ha desconectado:\n  › ${socket.id} ${ip}`);
         });
     });
